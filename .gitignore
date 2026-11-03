@@ -1,0 +1,8 @@
+node_modules/
+.env
+var/
+vendor/
+css/tailwind.css
+test-output/
+*.log
+.npm-cache/

@@ -1,0 +1,34 @@
+{
+  "model": "your-model-name-v1",
+  "missingDocuments": [],
+  "documents": [
+    {
+      "file": "Unified Application Form.pdf",
+      "pages": 2,
+      "fields": [
+        { "label": "Business name", "value": "Pinoy Print Shop", "page": 1 },
+        { "label": "Business address", "value": "Unit 12, 48 Maginhawa St.", "page": 1, "flagged": true }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "key": "address_mismatch",
+      "title": "Possible address inconsistency",
+      "why": "Unit 12 and Unit 21 differ. Other address fields match. Verify both source pages before deciding.",
+      "confidence": 0.86,
+      "tags": [
+        { "t": "Unit number differs", "tone": "warn" },
+        { "t": "Other address fields match", "tone": "info" }
+      ],
+      "a": {
+        "file": "Unified Application Form.pdf", "page": 1, "meta": "Page 1 · Business address", "label": "Business address",
+        "segs": [{ "t": "Unit 12", "hl": true }, { "t": ", 48 Maginhawa St." }], "sub": "Brgy. Teacher’s Village East, Quezon City"
+      },
+      "b": {
+        "file": "Lease Contract.pdf", "page": 2, "meta": "Page 2 · Leased premises", "label": "Leased premises",
+        "segs": [{ "t": "Unit 21", "hl": true }, { "t": ", 48 Maginhawa Street" }], "sub": "Brgy. Teacher’s Village East, Quezon City"
+      }
+    }
+  ]
+}

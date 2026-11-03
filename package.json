@@ -1,0 +1,33 @@
+{
+  "name": "kalabasa-local-intelligence",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "node --env-file-if-exists=.env server/main.mjs",
+    "user": "node --env-file-if-exists=.env scripts/user.mjs",
+    "policy": "node --env-file-if-exists=.env scripts/policy.mjs",
+    "doctor": "node --env-file-if-exists=.env scripts/doctor.mjs",
+    "samples": "node scripts/samples.mjs",
+    "test:live": "node --env-file-if-exists=.env scripts/live-smoke.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "6.7.2",
+    "@napi-rs/canvas": "0.1.100",
+    "ajv": "8.20.0",
+    "express": "5.1.0",
+    "multer": "2.5.0",
+    "pdfjs-dist": "5.4.624",
+    "qrcode": "1.5.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "sharp": "0.35.5",
+    "tailwindcss": "3.4.17"
+  }
+}

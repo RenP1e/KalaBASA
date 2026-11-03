@@ -1,0 +1,15 @@
+import { mkdir, copyFile, cp, readFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import vm from 'node:vm';
+await mkdir('vendor', { recursive: true });
+await copyFile('node_modules/react/umd/react.production.min.js', 'vendor/react.production.min.js');
+await copyFile('node_modules/react-dom/umd/react-dom.production.min.js', 'vendor/react-dom.production.min.js');
+await cp('node_modules/@fortawesome/fontawesome-free/css', 'vendor/fontawesome/css', { recursive: true });
+await cp('node_modules/@fortawesome/fontawesome-free/webfonts', 'vendor/fontawesome/webfonts', { recursive: true });
+const context = { tailwind: {} };
+vm.runInNewContext(await readFile('js/tailwind.config.js', 'utf8'), context);
+const cfg = context.tailwind.config;
+cfg.content = ['./index.html', './js/**/*.js'];
+await writeFile('tailwind.build.cjs', `module.exports = ${JSON.stringify(cfg, null, 2)};\n`);
+execFileSync(process.execPath, ['node_modules/tailwindcss/lib/cli.js', '-c', 'tailwind.build.cjs', '-i', 'css/tailwind.input.css', '-o', 'css/tailwind.css', '--minify'], { stdio: 'inherit', windowsHide: true });
+console.log('Offline browser assets built. No CDN requests are needed.');
