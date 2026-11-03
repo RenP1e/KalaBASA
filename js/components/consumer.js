@@ -57,7 +57,9 @@
         h(KB.Badge, { kind: st.kind, label: st.label })),
       t('p', 'mt-3 text-sm text-slate2', f.why),
       t('div', 'mt-3 flex flex-wrap gap-2', ...f.tags.map((g, k) => h('span', { key: k, className: cx('rounded-md px-3 py-1 text-xs font-semibold', TAG[g.tone] || TAG.info) }, g.t))),
-      t('div', 'mt-4 grid gap-3 sm:grid-cols-2', source(f.a), source(f.b)));
+      f.a.sourceKind === 'checklist' && f.b.sourceKind === 'checklist'
+        ? t('p', 'mt-4 text-xs text-slate2', `Checklist verification · Rule: ${f.ruleId}. No individual document page applies.`)
+        : t('div', 'mt-4 grid gap-3 sm:grid-cols-2', source(f.a), source(f.b)));
   }
 
   /* ---------- My reports (list) ---------- */

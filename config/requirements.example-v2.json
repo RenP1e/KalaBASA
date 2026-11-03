@@ -1,0 +1,264 @@
+{
+  "lguId": "example-lgu",
+  "version": "example-2",
+  "label": "Sample five-document checklist — replace with an authorized LGU policy",
+  "productionReady": false,
+  "documentTypes": {
+    "application_form": {
+      "label": "Application form",
+      "markers": [
+        "business permit application",
+        "unified application form"
+      ],
+      "extractFields": [
+        "owner_name",
+        "business_name",
+        "business_address",
+        "business_activity",
+        "issue_date"
+      ]
+    },
+    "business_registration": {
+      "label": "Business registration",
+      "markers": [
+        "certificate of business name registration",
+        "business registration certificate"
+      ],
+      "extractFields": [
+        "owner_name",
+        "business_name",
+        "business_address",
+        "registration_number",
+        "issue_date",
+        "expiry_date"
+      ]
+    },
+    "barangay_clearance": {
+      "label": "Barangay clearance",
+      "markers": [
+        "barangay business clearance",
+        "barangay clearance"
+      ],
+      "extractFields": [
+        "owner_name",
+        "business_name",
+        "business_address",
+        "business_activity",
+        "issue_date",
+        "expiry_date"
+      ]
+    },
+    "previous_permit": {
+      "label": "Previous permit",
+      "markers": [
+        "mayor's permit",
+        "business permit number"
+      ]
+    },
+    "lease_contract": {
+      "label": "Contract of lease",
+      "markers": [
+        "contract of lease",
+        "lease agreement"
+      ],
+      "extractFields": [
+        "owner_name",
+        "business_address"
+      ],
+      "fieldScopes": {
+        "owner_name": {
+          "after": "- and -",
+          "before": ", of legal age"
+        },
+        "business_address": {
+          "after": "1. PREMISES.",
+          "before": "2. TERM."
+        }
+      }
+    },
+    "community_tax_certificate": {
+      "label": "Community tax certificate",
+      "markers": [
+        "community tax certificate"
+      ],
+      "extractFields": [
+        "owner_name",
+        "issue_date"
+      ]
+    }
+  },
+  "fields": {
+    "owner_name": {
+      "label": "Owner name",
+      "normalization": "text"
+    },
+    "business_name": {
+      "label": "Business name",
+      "normalization": "text"
+    },
+    "business_address": {
+      "label": "Business address",
+      "normalization": "text"
+    },
+    "business_activity": {
+      "label": "Business activity",
+      "normalization": "text"
+    },
+    "registration_number": {
+      "label": "Registration number",
+      "normalization": "identifier"
+    },
+    "issue_date": {
+      "label": "Issue date",
+      "normalization": "date"
+    },
+    "expiry_date": {
+      "label": "Expiry date",
+      "normalization": "date"
+    },
+    "identification_number": {
+      "label": "Identification number",
+      "normalization": "identifier"
+    }
+  },
+  "rules": [
+    {
+      "id": "required-new",
+      "kind": "documents",
+      "enabled": true,
+      "applicationTypes": [
+        "new"
+      ],
+      "documentTypes": [
+        "application_form",
+        "business_registration",
+        "barangay_clearance",
+        "lease_contract",
+        "community_tax_certificate"
+      ]
+    },
+    {
+      "id": "required-renewal",
+      "kind": "documents",
+      "enabled": true,
+      "applicationTypes": [
+        "renewal"
+      ],
+      "documentTypes": [
+        "application_form",
+        "previous_permit",
+        "barangay_clearance"
+      ]
+    },
+    {
+      "id": "form-fields",
+      "kind": "required_fields",
+      "enabled": true,
+      "documentTypes": [
+        "application_form"
+      ],
+      "fields": [
+        "owner_name",
+        "business_name",
+        "business_address",
+        "business_activity"
+      ]
+    },
+    {
+      "id": "registration-fields",
+      "kind": "required_fields",
+      "enabled": true,
+      "documentTypes": [
+        "business_registration"
+      ],
+      "fields": [
+        "business_name",
+        "registration_number"
+      ]
+    },
+    {
+      "id": "business-name-consistency",
+      "kind": "compare",
+      "enabled": true,
+      "fields": [
+        "business_name"
+      ],
+      "documentTypes": [
+        "application_form",
+        "business_registration",
+        "barangay_clearance",
+        "previous_permit"
+      ]
+    },
+    {
+      "id": "address-consistency",
+      "kind": "compare",
+      "enabled": true,
+      "fields": [
+        "business_address"
+      ],
+      "documentTypes": [
+        "application_form",
+        "business_registration",
+        "barangay_clearance",
+        "lease_contract",
+        "previous_permit"
+      ]
+    },
+    {
+      "id": "registration-consistency",
+      "kind": "compare",
+      "enabled": true,
+      "fields": [
+        "registration_number"
+      ],
+      "documentTypes": [
+        "business_registration"
+      ]
+    },
+    {
+      "id": "registration-format",
+      "kind": "format",
+      "enabled": true,
+      "documentTypes": [
+        "business_registration"
+      ],
+      "fields": [
+        "registration_number"
+      ],
+      "pattern": "^[A-Z0-9-]{4,40}$"
+    },
+    {
+      "id": "clearance-age",
+      "kind": "date",
+      "enabled": true,
+      "documentTypes": [
+        "barangay_clearance"
+      ],
+      "fields": [
+        "issue_date"
+      ],
+      "maxAgeDays": 365,
+      "allowFutureDays": 0
+    },
+    {
+      "id": "expiry",
+      "kind": "date",
+      "enabled": true,
+      "documentTypes": [
+        "barangay_clearance",
+        "business_registration"
+      ],
+      "fields": [
+        "expiry_date"
+      ],
+      "notExpired": true
+    },
+    {
+      "id": "authenticity",
+      "kind": "manual",
+      "enabled": true,
+      "description": "An authorized reviewer must verify document authenticity and applicable local requirements."
+    }
+  ]
+}

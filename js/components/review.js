@@ -20,8 +20,9 @@
         t('p', 'mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate2', src.label),
         h(Segs, { segs: src.segs, big: true }), t('p', 'mt-3 text-sm text-slate2', src.sub)),
       t('div', 'mt-4 flex items-center justify-between text-sm',
-        h('button', { onClick: onOpen, className: 'flex items-center gap-2 font-semibold text-navy hover:underline' }, Icon('arrow-up-right-from-square', 'text-xs'), 'Open source page'),
-        t('span', 'text-xs text-slate2', src.page ? `Page ${src.page}` : 'Source unavailable')));
+        src.sourceUrl ? h('button', { onClick: onOpen, className: 'flex items-center gap-2 font-semibold text-navy hover:underline' }, Icon('arrow-up-right-from-square', 'text-xs'), 'Open source page')
+          : src.documentUrl ? h('a', { href: src.documentUrl, target: '_blank', rel: 'noreferrer', className: 'font-semibold text-navy hover:underline' }, 'Inspect original document') : t('span', 'text-xs text-slate2', 'Checklist verification'),
+        t('span', 'text-xs text-slate2', src.page ? `Page ${src.page}` : src.documentId ? 'Document-level check' : 'No document page applies')));
   }
 
   function SourceModal({ src, onClose }) {
@@ -67,7 +68,9 @@
         total > 1 && t('div', 'mt-3 flex gap-4 text-sm font-semibold text-navy',
           i > 0 && h('a', { href: `#/applications/${appRef}/finding/${i}`, className: 'hover:underline' }, '← Previous finding'),
           i < total - 1 && h('a', { href: `#/applications/${appRef}/finding/${i + 2}`, className: 'hover:underline' }, 'Next finding →')),
-        t('div', 'mt-6 grid gap-6 md:grid-cols-2', h(SourceCard, { src: f.a, onOpen: () => setSrc(f.a) }), h(SourceCard, { src: f.b, onOpen: () => setSrc(f.b) })),
+        f.a.sourceKind === 'checklist' && f.b.sourceKind === 'checklist'
+          ? KB.Card('mt-6 p-6', t('h3', 'font-bold text-navy', 'Checklist verification'), t('p', 'mt-2 text-sm text-slate2', 'This check comes from the LGU requirements, rather than a quoted field on a document page.'), t('p', 'mt-2 text-xs text-slate2', `Rule: ${f.ruleId} · Requirements: ${a.analysis.requirementsVersion}`))
+          : t('div', 'mt-6 grid gap-6 md:grid-cols-2', h(SourceCard, { src: f.a, onOpen: () => setSrc(f.a) }), h(SourceCard, { src: f.b, onOpen: () => setSrc(f.b) })),
         t('div', 'mt-6 grid gap-6 lg:grid-cols-3',
           t('div', 'rounded-2xl bg-brand-soft p-7 lg:col-span-2',
             t('h3', 'flex items-center gap-3 text-xl font-bold text-navy', Icon('wand-magic-sparkles', 'text-brand'), 'Why this was flagged'),

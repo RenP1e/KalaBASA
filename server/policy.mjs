@@ -11,6 +11,12 @@ const validator = ajv.compile({
     documentTypes: { type: 'object', minProperties: 1, maxProperties: 30, propertyNames: { pattern: '^[a-z][a-z0-9_]*$' }, additionalProperties: {
       type: 'object', additionalProperties: false, required: ['label', 'markers'], properties: {
         label: { type: 'string', minLength: 1, maxLength: 100 }, markers: { type: 'array', minItems: 1, maxItems: 20, items: { type: 'string', minLength: 5, maxLength: 150 } },
+        extractFields: names,
+        fieldScopes: { type: 'object', maxProperties: 40, additionalProperties: {
+          type: 'object', additionalProperties: false, required: ['after', 'before'], properties: {
+            after: { type: 'string', minLength: 1, maxLength: 150 }, before: { type: 'string', minLength: 1, maxLength: 150 },
+          },
+        } },
       },
     } },
     fields: { type: 'object', minProperties: 1, maxProperties: 40, propertyNames: { pattern: '^[a-z][a-z0-9_]*$' }, additionalProperties: {
@@ -31,6 +37,12 @@ const validator = ajv.compile({
 export function validatePolicy(policy) {
   if (!validator(policy)) throw new Error(`Invalid requirements: ${ajv.errorsText(validator.errors)}`);
   const ids = new Set();
+  for (const spec of Object.values(policy.documentTypes)) for (const field of spec.extractFields || []) {
+    if (!Object.hasOwn(policy.fields, field)) throw new Error(`Unknown extraction field: ${field}`);
+  }
+  for (const spec of Object.values(policy.documentTypes)) for (const field of Object.keys(spec.fieldScopes || {})) {
+    if (!Object.hasOwn(policy.fields, field)) throw new Error(`Unknown scoped field: ${field}`);
+  }
   for (const r of policy.rules) {
     if (ids.has(r.id)) throw new Error('Rule IDs must be unique.');
     ids.add(r.id);

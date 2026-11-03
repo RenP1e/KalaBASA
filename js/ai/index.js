@@ -69,11 +69,11 @@
   }
 
   function normDoc(d) {
-    return {
+    return { ...d,
       file: str(d && d.file, 'Document'),
       pages: num(d && d.pages, 1),
       fields: (Array.isArray(d && d.fields) ? d.fields : []).filter((x) => x && x.label != null)
-        .map((x) => ({ label: String(x.label), value: String(x.value == null ? '' : x.value), page: num(x.page, 1), flagged: !!x.flagged })),
+        .map((x) => ({ ...x, label: String(x.label), value: x.value == null ? null : String(x.value), page: x.page == null ? null : num(x.page, null), flagged: !!x.flagged })),
     };
   }
 

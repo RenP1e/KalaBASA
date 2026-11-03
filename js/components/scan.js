@@ -119,29 +119,38 @@
   /* ---------- Step 2: requirements check ---------- */
   KB.reqDocs = reqDocs;
   function reqDocs(a) {
-    const list = a.docs.map((d) => ({ file: d, name: slug(d), pages: a.analysis.documents.find(x => x.file === d)?.pages || 0, n: a.findings.filter((f) => f.a.file === d || f.b.file === d).length, miss: false }));
-    // Required documents the AI says are absent (analysis.missingDocuments).
+    const list = a.docs.map((d) => {
+      const linked = a.findings.filter(f => f.a.file === d || f.b.file === d);
+      const issues = linked.filter(f => ['confirmed_rule_violation', 'potential_inconsistency'].includes(f.verificationStatus));
+      return { file: d, name: slug(d), pages: a.analysis.documents.find(x => x.file === d)?.pages || 0, n: issues.length, checks: linked.length - issues.length, miss: false };
+    });
     const missing = ((a.analysis && a.analysis.missingDocuments) || []).map((m) => ({ file: m, name: slug(m), pages: 0, n: 0, miss: true }));
-    return list.concat(missing);
+    // Older assessments also stored uncertain recognition under missingDocuments. Display them honestly without changing the saved record.
+    const uncertain = (a.analysis.unverifiedDocuments || []).map(m => ({ file: m.label, name: m.label, pages: 0, n: 0, checks: 1, miss: false, unverified: true }));
+    const filtered = missing.filter(m => !uncertain.some(u => u.name === m.name));
+    return list.concat(filtered, uncertain);
   }
   const pill = (cls, text) => t('span', cx('rounded-md px-3 py-1 text-xs font-semibold', cls), text);
 
   KB.pages.Check = function Check({ appRef }) {
     const a = Q.find(KB.useStore((s) => s.apps), appRef);
     if (!a) return notFound(appRef);
-    const docs = reqDocs(a), got = docs.filter((d) => !d.miss).length, pct = Math.round((got / docs.length) * 100);
+    const docs = reqDocs(a), got = a.docs.length;
+    const issues = a.findings.filter(f => ['confirmed_rule_violation', 'potential_inconsistency'].includes(f.verificationStatus));
+    const checks = a.findings.length - issues.length;
     return h(KB.Shell, { active: 'applications' }, KB.Container('space-y-6 py-8', h(AppHead, { a, n: 2 }),
       KB.Card('overflow-hidden', cardHead('Requirements', 'Check', `${a.ref} · ${a.type}`, 'file-circle-check'),
         t('div', 'border-t border-line px-6 py-4',
-          t('div', 'mb-2 flex justify-between text-sm', t('span', 'text-slate2', `${got} of ${docs.length} required documents submitted`), t('span', cx('font-bold', pct === 100 ? 'text-ok' : 'text-brand-dark'), pct + '%')),
-          h('div', { role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100, className: 'h-2 overflow-hidden rounded-full bg-line' }, h('div', { className: cx('h-full rounded-full', pct === 100 ? 'bg-ok' : 'bg-brand'), style: { width: pct + '%' } }))),
-        t('div', 'border-t border-line px-6 pb-6 pt-5', t('p', 'mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate2', 'Required documents'),
+          t('p', 'font-semibold text-navy', `${got} documents uploaded · ${issues.length} compliance issue${issues.length === 1 ? '' : 's'} · ${checks} verification check${checks === 1 ? '' : 's'}`),
+          t('p', 'mt-2 text-sm text-slate2', 'Verification checks describe unreadable, unrecognized, or unverified information. They do not mean the applicant submitted incorrect information. One issue may reference several documents.')),
+        t('div', 'border-t border-line px-6 pb-6 pt-5', t('p', 'mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate2', 'Uploaded documents and required checks'),
           ...docs.map((d) => {
             const bad = d.miss || d.n > 0;
             return t('div', 'flex items-center gap-4 border-t border-line py-3.5',
-              t('span', cx('grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm', bad ? 'bg-danger-soft text-danger' : 'bg-ok-soft text-ok'), Icon(bad ? 'triangle-exclamation' : 'circle-check')),
-              t('span', 'min-w-0 flex-1', t('span', 'block font-semibold text-navy', d.name), t('span', 'block truncate text-xs text-slate2', d.miss ? 'Not found in uploaded documents' : `${d.file} · ${d.pages} page${d.pages > 1 ? 's' : ''}`)),
-              d.miss ? pill('bg-danger-soft text-danger', 'Missing') : d.n ? pill('bg-danger-soft text-danger', `${d.n} finding${d.n > 1 ? 's' : ''}`) : pill('bg-ok-soft text-ok', 'Submitted'));
+              t('span', cx('grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm', bad ? 'bg-danger-soft text-danger' : d.checks > 0 ? 'bg-navy-50 text-navy' : 'bg-ok-soft text-ok'), Icon(bad ? 'triangle-exclamation' : d.checks > 0 ? 'circle-question' : 'circle-check')),
+              t('span', 'min-w-0 flex-1', t('span', 'block font-semibold text-navy', d.name), t('span', 'block truncate text-xs text-slate2', d.miss ? 'Not found in uploaded documents' : d.unverified ? 'Document recognition needs verification; absence is not confirmed' : `${d.file} · ${d.pages} page${d.pages > 1 ? 's' : ''}`)),
+              t('div', 'flex flex-wrap gap-2', d.miss ? pill('bg-danger-soft text-danger', 'Missing') : d.n ? pill('bg-danger-soft text-danger', `${d.n} issue${d.n > 1 ? 's' : ''}`) : pill(d.unverified ? 'bg-navy-50 text-navy' : 'bg-ok-soft text-ok', d.unverified ? 'Unverified' : 'Uploaded'),
+                d.checks > 0 && pill('bg-navy-50 text-navy', `${d.checks} verification check${d.checks === 1 ? '' : 's'}`)));
           }),
           t('div', 'mt-4', h(KB.Btn, { href: `/applications/${a.ref}/fields`, icon: 'expand', full: true, size: 'lg' }, 'View Extracted Fields'))))));
   };
@@ -149,7 +158,9 @@
   /* ---------- Step 3: extracted fields ---------- */
   function fieldsFor(a, d) {
     const ex = a.analysis && a.analysis.documents.find((x) => x.file === d);
-    return ex && ex.fields.length ? ex.fields.map((f) => ({ l: f.label, v: f.value == null ? 'Unavailable' : f.value, p: f.page, flag: !!f.flagged, quote: f.quote })) : [{ l: 'Extraction', v: 'Unavailable; inspect the original document', p: null, flag: true }];
+    return ex && ex.fields.length ? ex.fields.map((f) => ({ l: f.label, v: f.value == null ? f.raw ? `${f.raw} (needs verification)` : f.required ? 'Not extracted — required field' : 'Not extracted — optional field' : f.value,
+      p: f.page, flag: !!f.flagged, quote: f.quote, sourceUrl: f.sourceUrl, documentUrl: f.documentUrl || ex.sourceUrl, reason: f.reason, missing: f.value == null && !f.raw }))
+      : [{ l: 'Extraction', v: 'No fields have been extracted. Inspect the original document.', p: null, flag: true, missing: true, documentUrl: ex && ex.sourceUrl }];
   }
 
   KB.pages.Fields = function Fields({ appRef }) {
@@ -159,15 +170,17 @@
     const docs = a.docs, d = docs[Math.min(tab, docs.length - 1)], rows = fieldsFor(a, d);
     const dot = (c, l) => t('span', 'flex items-center gap-2', t('span', cx('h-2 w-2 rounded-full', c)), l);
     return h(KB.Shell, { active: 'applications' }, KB.Container('space-y-6 py-8', h(AppHead, { a, n: 3 }),
-      KB.Card('overflow-hidden', cardHead('Extracted', 'Fields', `${slug(d)} · ${rows[0] ? Math.max(...rows.map((r) => r.p)) : 1} page(s)`, 'file-lines'),
+      KB.Card('overflow-hidden', cardHead('Extracted', 'Fields', `${slug(d)} · ${a.analysis.documents.find(x => x.file === d)?.pages || 0} page(s)`, 'file-lines'),
         h('div', { role: 'tablist', className: 'kb-scroll-x flex gap-2 border-y border-line px-6 py-3' }, ...docs.map((x, i) => h('button', { key: x, role: 'tab', 'aria-selected': i === tab, onClick: () => setTab(i),
           className: cx('whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition', i === tab ? 'bg-navy text-white' : 'text-slate2 hover:text-navy') }, slug(x)))),
         t('div', null, ...rows.map((r) => t('div', cx('flex items-center justify-between gap-4 border-b border-line px-6 py-3.5', r.flag && 'bg-danger-soft'),
-          t('div', 'min-w-0', t('p', 'text-xs text-slate2', r.l), t('p', 'font-bold text-navy', r.v), r.quote && t('p', 'mt-1 text-xs text-slate2', `Evidence: ${r.quote}`)),
-          t('div', 'flex items-center gap-3 text-xs text-slate2', r.p ? `p.${r.p}` : 'Source unavailable',
-            t('span', cx('grid h-7 w-7 place-items-center rounded-full', r.flag ? 'bg-danger-soft text-danger' : 'bg-ok-soft text-ok'), Icon(r.flag ? 'triangle-exclamation' : 'circle-check', 'text-xs')))))),
-        t('div', 'flex gap-6 px-6 py-3 text-xs text-slate2', dot('bg-ok', 'Grounded in OCR'), dot('bg-danger', 'Needs verification')),
+          t('div', 'min-w-0', t('p', 'text-xs text-slate2', r.l), t('p', 'font-bold text-navy', r.v), r.quote && t('p', 'mt-1 text-xs text-slate2', `Evidence: ${r.quote}`), r.reason && t('p', 'mt-1 text-xs text-slate2', r.reason)),
+          t('div', 'flex shrink-0 items-center gap-3 text-xs text-slate2',
+            r.sourceUrl ? h('a', { href: r.sourceUrl, target: '_blank', rel: 'noreferrer', className: 'font-semibold text-brand-dark underline' }, `Open page ${r.p}`)
+              : r.documentUrl ? h('a', { href: r.documentUrl, target: '_blank', rel: 'noreferrer', className: 'font-semibold text-brand-dark underline' }, 'Inspect document') : 'Document reference not recorded',
+            t('span', cx('grid h-7 w-7 place-items-center rounded-full', r.flag ? 'bg-danger-soft text-danger' : r.missing ? 'bg-navy-50 text-slate2' : 'bg-ok-soft text-ok'), Icon(r.flag ? 'triangle-exclamation' : r.missing ? 'circle-question' : 'circle-check', 'text-xs')))))),
+        t('div', 'flex gap-6 px-6 py-3 text-xs text-slate2', dot('bg-ok', 'Grounded in document text'), dot('bg-danger', 'Needs verification')),
         t('div', 'px-6 pb-6', h(KB.Btn, { href: `/applications/${a.ref}`, icon: 'triangle-exclamation', full: true, size: 'lg' }, `View Findings (${a.findings.length})`),
-          t('p', 'mt-4 text-xs text-slate2', 'Values are AI-extracted. Check each against its source page.')))));
+          t('p', 'mt-4 text-xs text-slate2', 'Only fields configured for this document type are shown. Extracted values link to their source page. A field marked not extracted needs inspection; it is not proof the document omits that information.')))));
   };
 })();

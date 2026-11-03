@@ -52,3 +52,18 @@ export function scannedPdf(jpeg, count = 1) {
   parts.push(Buffer.from(`xref\n0 ${objects.length}\n0000000000 65535 f \n${offsets.slice(1).map(o => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${length}\n%%EOF\n`));
   return Buffer.concat(parts);
 }
+export function textPdf(lines) {
+  const escape = text => text.replace(/[()\\]/g, '\\$&');
+  const stream = `BT /F1 12 Tf 40 740 Td ${lines.map((line, index) => `${index ? '0 -20 Td ' : ''}(${escape(line)}) Tj`).join('\n')} ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  const parts = [Buffer.from('%PDF-1.4\n')], offsets = []; let length = parts[0].length;
+  objects.forEach((obj, i) => { offsets.push(length); const b = Buffer.from(`${i + 1} 0 obj\n${obj}\nendobj\n`); parts.push(b); length += b.length; });
+  parts.push(Buffer.from(`xref\n0 6\n0000000000 65535 f \n${offsets.map(o => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${length}\n%%EOF\n`));
+  return Buffer.concat(parts);
+}

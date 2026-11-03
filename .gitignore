@@ -6,3 +6,4 @@ css/tailwind.css
 test-output/
 *.log
 .npm-cache/
+tmp/pdfs/

@@ -46,6 +46,12 @@ test('authenticated upload, evidence, QR privacy, RBAC, CSRF, and human decision
     assert.equal((await decide('forwarded')).status, 200); reviewApp = await (await call(`/api/assessments/${j2.id}`, reviewer)).json(); assert.equal(reviewApp.decision, null);
     assert.equal((await decide('approved')).status, 200); reviewApp = await (await call(`/api/assessments/${j2.id}`, reviewer)).json(); assert.equal(reviewApp.decision.type, 'approved'); assert.equal(reviewApp.decision.by, 'Synthetic reviewer');
     const audit = await (await call('/api/admin/audit', admin)).json(); assert.ok(audit.some(a => a.action === 'source_page_accessed')); assert.ok(audit.some(a => a.action === 'application_approved'));
+    savePolicy(h.store, { ...example, version: 'test-next-policy' }, 'test-admin');
+    assert.equal((await call(`/api/assessments/${id}/retry`, one, { method: 'POST' })).status, 202); await engine.pending;
+    assert.equal(h.store.get('jobs', id).policy.version, example.version);
+    assert.equal((await call(`/api/assessments/${id}/retry`, one, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useCurrentRequirements: true }) })).status, 202); await engine.pending;
+    assert.equal(h.store.get('jobs', id).policy.version, 'test-next-policy');
+    assert.ok(h.store.list('assessmentHistory').some(j => j.id === id && j.policy.version === example.version));
     assert.equal((await call('/api/auth/logout', one, { method: 'POST' })).status, 200); assert.equal((await call('/api/auth/me', one)).status, 401);
   } finally { await engine.stop(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); h.cleanup(); }
 });

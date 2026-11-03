@@ -1,8 +1,8 @@
-import { canonical } from './extraction.mjs';
+import { canonical, isGrounded } from './extraction.mjs';
 const source = (doc, field, label = 'Document') => ({
   documentId: doc?.id || null, file: doc?.file || 'Application document checklist', page: field?.page || null,
-  meta: field?.page ? `Page ${field.page} · ${label}` : 'Source unavailable', label,
-  segs: [{ t: field?.raw || field?.value || 'Unavailable', hl: true }],
+  meta: field?.page ? `Page ${field.page} · ${label}` : doc ? 'Document-level check · no value located' : 'LGU checklist · no document page', label,
+  segs: [{ t: field?.raw || field?.value || (doc ? 'No extracted value located; inspect the original document.' : 'Application-level verification; no quoted document value.'), hl: !!(field?.raw || field?.value) }],
   quote: field?.quote || null, sub: field?.verification || 'Not automatically verified',
 });
 export function validateCompliance(documents, policy, applicationType, assessmentDate) {
@@ -15,7 +15,7 @@ export function validateCompliance(documents, policy, applicationType, assessmen
       tags: [{ t: verificationStatus.replaceAll('_', ' '), tone: verificationStatus === 'confirmed_rule_violation' ? 'warn' : 'info' }, { t: `Rule: ${ruleId}`, tone: 'info' }],
     });
   }
-  const usable = field => field?.value !== null && field?.value !== undefined && field?.verification === 'grounded_in_ocr';
+  const usable = isGrounded;
   for (const doc of documents) {
     if (doc.error) add('system-ocr', 'unverifiable', 'unverified', 'Document could not be read; manual review is required.', doc);
     if (!doc.classificationVerified) add('system-classification', 'unverifiable', 'unverified', 'Document type could not be verified automatically.', doc);
@@ -35,20 +35,23 @@ export function validateCompliance(documents, policy, applicationType, assessmen
       for (const type of rule.documentTypes) {
         if (!documents.some(d => d.documentType === type && d.classificationVerified)) {
           const label = policy.documentTypes[type].label;
-          missingDocuments.push(label);
           const uncertain = documents.some(d => !d.classificationVerified);
+          if (!uncertain) missingDocuments.push(label);
           add(rule.id, 'missing_document', uncertain ? 'unverified' : 'confirmed_rule_violation', `${label} has not been verified among the uploaded documents.`);
         }
       }
     } else if (rule.kind === 'manual') {
       add(rule.id, 'manual_verification', 'unverified', rule.description || 'This requirement needs an authorized reviewer.');
     } else if (rule.kind === 'compare') {
+      if (selected.length < 2) continue;
       for (const key of rule.fields) {
         const pairs = selected.filter(d => d.classificationVerified).flatMap(d => (d.fields[key] || []).filter(usable).map(f => ({ d, f })));
         const missing = selected.filter(d => !(d.fields[key] || []).some(usable));
         if (pairs.length < 2 || missing.length) add(rule.id, 'unverifiable', 'unverified', `${policy.fields[key].label} cannot be compared across all relevant records.`, missing[0] || selected[0]);
-        if (pairs.length > 1) for (const p of pairs.slice(1)) {
-          if (canonical(p.f.value) !== canonical(pairs[0].f.value)) add(rule.id, 'inconsistency', 'potential_inconsistency', `${policy.fields[key].label} differs across submitted records.`, pairs[0].d, { ...pairs[0].f, label: policy.fields[key].label }, p.d, p.f);
+        const differing = pairs.length > 1 && pairs.find(p => canonical(p.f.value) !== canonical(pairs[0].f.value));
+        if (differing) {
+          add(rule.id, 'inconsistency', 'potential_inconsistency', `${policy.fields[key].label} differs across submitted records.`, pairs[0].d, { ...pairs[0].f, label: policy.fields[key].label }, differing.d, differing.f);
+          findings.at(-1).evidence = pairs.map(p => source(p.d, p.f, policy.fields[key].label));
         }
       }
     } else {

@@ -23,9 +23,9 @@ test('incomplete information stays unavailable rather than fabricated', () => {
 });
 test('cross-document names, addresses and registration conflicts retain both sources', () => {
   const docs = complete(); docs[0] = document('application_form', { business_name: 'DIFFERENT SHOP', business_address: '456 OTHER STREET', registration_number: 'REG-99999' });
-  const conflicts = assess(docs).findings.filter(f => f.category === 'inconsistency'); assert.equal(conflicts.length, 4);
+  const conflicts = assess(docs).findings.filter(f => f.category === 'inconsistency'); assert.equal(conflicts.length, 3);
   assert.equal(new Set(conflicts.map(f => f.ruleId)).size, 3);
-  for (const f of conflicts) { assert.equal(f.verificationStatus, 'potential_inconsistency'); assert.equal(f.evidence.length, 2); assert.equal(f.a.page, 1); assert.ok(f.a.quote); assert.ok(f.ruleId); }
+  for (const f of conflicts) { assert.equal(f.verificationStatus, 'potential_inconsistency'); assert.ok(f.evidence.length >= 2); assert.equal(f.a.page, 1); assert.ok(f.a.quote); assert.ok(f.ruleId); }
 });
 test('invalid dates and identifiers are violations; ambiguous dates need review', () => {
   const docs = complete(); docs[1] = document('business_registration', { registration_number: '@@@', expiry_date: '2025-01-01' });
@@ -53,4 +53,10 @@ test('configuration validates references and rejects executable or unbounded pat
   const unknown = structuredClone(example); unknown.rules[0].documentTypes.push('unknown_type'); assert.throws(() => validatePolicy(unknown));
   const disabled = structuredClone(policy); disabled.rules.find(r => r.id === 'required-new').enabled = false;
   assert.deepEqual(assess([], disabled).missingDocuments, []);
+});
+test('unrecognized uploaded documents are unverified rather than declared missing', () => {
+  const docs = complete(); docs[1].classificationVerified = false; docs[1].documentType = 'unknown';
+  const result = assess(docs);
+  assert.equal(result.missingDocuments.includes('Business registration'), false);
+  assert.equal(result.findings.find(f => f.ruleId === 'required-new').verificationStatus, 'unverified');
 });

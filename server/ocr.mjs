@@ -40,16 +40,35 @@ export function detectType(buffer) {
   if (buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255) return 'image/jpeg';
   return null;
 }
+export function embeddedPageText(content) {
+  let text = '';
+  const words = [];
+  for (const item of content.items || []) {
+    if (typeof item.str !== 'string') continue;
+    if (text && !/\s$/.test(text)) text += ' ';
+    const start = text.length;
+    text += item.str;
+    if (item.str.trim()) words.push({ text: item.str, start, end: text.length, confidence: null, bbox: [item.transform?.[4] || 0, item.transform?.[5] || 0, item.width || 0, item.height || 0], coordinateSpace: 'pdf' });
+    if (item.hasEOL) text += '\n';
+  }
+  const visible = text.replace(/\s/g, '');
+  const suspicious = (text.match(/[\uFFFD\u0000-\u0008\u000E-\u001F]/g) || []).length;
+  return { text: text.trim(), words, usable: visible.length >= 40 && (text.match(/\p{L}/gu) || []).length >= 20 && suspicious / Math.max(1, visible.length) < 0.01 };
+}
 export async function ocrLocalDocument(buffer, cfg) {
   const type = detectType(buffer);
   if (!type) throw new Error('UNSUPPORTED_FORMAT');
   const pages = [];
-  async function recognize(image, page) {
+  async function recognize(image, page, embedded) {
     // Rotation honours EXIF; bounded pixels and a modest upscale improve small scans.
     const normalized = await sharp(image, { limitInputPixels: 25000000 }).rotate().resize({ width: 2200, height: 3000, fit: 'inside' }).flatten({ background: 'white' }).grayscale().normalize().png().toBuffer();
+    if (embedded?.usable) {
+      pages.push({ page, text: embedded.text, words: embedded.words, confidence: null, unreliable: false, textSource: 'pdf_text', engine: 'pdfjs-text', image: normalized });
+      return;
+    }
     const result = parseTSV(await runTesseract(normalized, cfg));
     const unreliable = result.confidence < cfg.minConfidence || result.text.replace(/\s/g, '').length < 20;
-    pages.push({ page, ...result, unreliable, engine: 'tesseract', image: normalized });
+    pages.push({ page, ...result, unreliable, engine: 'tesseract', textSource: 'ocr', image: normalized });
   }
   if (type === 'application/pdf') {
     const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -65,7 +84,9 @@ export async function ocrLocalDocument(buffer, cfg) {
         const viewport = page.getViewport({ scale });
         const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
         await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-        await recognize(canvas.toBuffer('image/png'), n);
+        let embedded;
+        try { embedded = embeddedPageText(await page.getTextContent()); } catch { /* Locally fall back to OCR when the text layer cannot be read. */ }
+        await recognize(canvas.toBuffer('image/png'), n, embedded);
         page.cleanup();
       }
     } finally { await task.destroy(); }

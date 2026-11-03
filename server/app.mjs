@@ -141,10 +141,13 @@ export function createApp(store, cfg, dependencies = {}) {
   app.post('/api/assessments/:id/retry', (req, res) => {
     const job = getJob(req);
     if (!terminalStates.includes(job.state) || job.decision || job.transmissionState !== 'local_only') throw fail(409, 'Only a completed, unsubmitted local assessment can be retried.');
+    const policy = req.body?.useCurrentRequirements === true ? activePolicy(store, job.lguId) : job.policy;
+    if (!policy) throw fail(409, 'No active LGU requirements are available.');
     store.transaction(() => {
       store.put('assessmentHistory', `${job.id}:${job.revision}`, job);
-      Object.assign(job, { state: 'uploading', progress: 0, revision: job.revision + 1, findings: [], completedAt: null, error: null });
-      store.put('jobs', job.id, job); store.audit(req.auth.user.id, 'assessment_retry', job.id, { revision: job.revision });
+      Object.assign(job, { state: 'uploading', progress: 0, revision: job.revision + 1, findings: [], completedAt: null, error: null, policy,
+        documents: job.documents.map(d => ({ id: d.id, file: d.file, mime: d.mime })) });
+      store.put('jobs', job.id, job); store.audit(req.auth.user.id, 'assessment_retry', job.id, { revision: job.revision, policyVersion: policy.version, policyHash: policy.hash, useCurrentRequirements: req.body?.useCurrentRequirements === true });
     });
     engine.kick(); res.status(202).json({ id: job.id });
   });
