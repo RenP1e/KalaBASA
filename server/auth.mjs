@@ -1,13 +1,13 @@
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
 export const digest = s => createHash('sha256').update(s).digest('hex');
 const publicUser = u => ({ id: u.id, email: u.email, name: u.name, lguId: u.lguId, access: u.role === 'applicant' ? 'consumer' : 'reviewer', role: u.role, initials: u.name.split(/\s+/).map(s => s[0]).join('').slice(0, 2) });
-export function createUser(store, { email, password, name, role, lguId }) {
+export function createUser(store, { email, password, name, role, lguId }, actor = 'administrator-cli') {
   email = String(email || '').trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email) || typeof password !== 'string' || password.length < 12 || !name || !lguId || !['applicant', 'reviewer', 'admin'].includes(role)) throw new Error('Supply email, password (12+ characters), name, role and LGU ID.');
   if (store.list('users').some(u => u.email === email)) throw new Error('Account already exists.');
   const salt = randomBytes(16).toString('hex');
   const user = { id: randomUUID(), email, name, role, lguId, salt, hash: scryptSync(password, salt, 64).toString('hex') };
-  store.transaction(() => { store.put('users', user.id, user); store.audit('administrator-cli', 'user_created', user.id, { role, lguId }); });
+  store.transaction(() => { store.put('users', user.id, user); store.audit(actor, 'user_created', user.id, { role, lguId }); });
   return publicUser(user);
 }
 export function login(store, email, password) {

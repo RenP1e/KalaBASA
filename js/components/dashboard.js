@@ -40,15 +40,15 @@
           t('div', 'flex flex-wrap items-center justify-between gap-3 px-6 py-5',
             t('div', 'flex items-center gap-3',
               t('span', 'grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-ok-soft text-ok', Icon('circle-check', 'text-lg')),
-              t('div', null, t('h2', 'text-xl font-bold text-navy', 'Received LGU submissions'), t('p', 'text-sm text-slate2', 'Transmissions received by this LGU for human review'))),
+              t('div', null, t('h2', 'text-xl font-bold text-navy', 'Received LGU submissions'), t('p', 'text-sm text-slate2', 'Applications submitted to this LGU for human review'))),
             t('span', cx('rounded-full px-3 py-1 text-xs font-semibold', done.length ? 'bg-ok-soft text-ok' : 'bg-navy-50 text-slate2'), `${done.length} received`)),
           done.length
             ? t('div', 'divide-y divide-line border-t border-line', ...done.slice(0, 5).map((a) => h('a', { key: a.ref, href: '#/applications/' + a.ref, className: 'flex items-center gap-4 px-6 py-4 transition hover:bg-mist' },
               t('span', 'min-w-0 flex-1', t('span', 'block truncate font-bold text-navy', a.name),
                 t('span', 'block truncate text-sm text-slate2', `${a.ref} · ${a.owner} · ${a.completedStamp ? `${a.completedStamp.date}, ${a.completedStamp.time}` : Q.ago(a.agoMin)}`)),
-              t('span', 'hidden items-center gap-1.5 rounded-full bg-ok-soft px-3 py-1 text-xs font-semibold text-ok sm:inline-flex', Icon('receipt'), 'Transmission received'),
+              t('span', 'hidden items-center gap-1.5 rounded-full bg-ok-soft px-3 py-1 text-xs font-semibold text-ok sm:inline-flex', Icon('receipt'), 'Submission received'),
               h(KB.Badge, { kind: 'Pending', label: 'Human review required' }), Icon('chevron-right', 'text-navy'))))
-            : t('p', 'border-t border-line px-6 py-8 text-center text-sm text-slate2', 'No LGU transmissions have been received. Local assessments remain available in Applications.')),
+            : t('p', 'border-t border-line px-6 py-8 text-center text-sm text-slate2', 'No applicant submissions have been received. They appear here after an applicant selects Submit to LGU.')),
         t('div', 'grid gap-6 lg:grid-cols-3',
           t('div', 'lg:col-span-2',
             t('div', 'mb-4 flex items-center justify-between', t('h2', 'text-xl font-bold text-navy', 'Needs your attention'),

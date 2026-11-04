@@ -32,7 +32,7 @@
       className: 'grid h-10 w-10 place-items-center rounded-full text-navy hover:bg-navy-50' }, Icon(dark ? 'sun' : 'moon', 'text-lg'));
   }
 
-  const CONSUMER_NAV = [['scan', 'Scan document', '/scan', 'expand'], ['my-reports', 'My reports', '/my-reports', 'file-circle-check']];
+  const CONSUMER_NAV = [['scan', 'Scan document', '/scan', 'expand'], ['my-reports', 'My reports', '/my-reports', 'file-circle-check'], ['profile', 'My account', '/profile', 'user']];
   const NAV = [['home', 'Home', '/home', 'table-cells-large'], ['applications', 'Applications', '/applications', 'copy'],
     ['scan', 'Scan document', '/scan', 'expand'], ['reports', 'Reports', '/reports', 'chart-line'], ['profile', 'Profile', '/profile', 'user']];
 

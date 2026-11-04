@@ -109,7 +109,8 @@ export function applicationView(job) {
   const findings = (job.findings || []).map(f => ({ ...f, a: withUrl(f.a, job), b: withUrl(f.b, job), evidence: (f.evidence || []).map(src => withUrl(src, job)) }));
   return {
     id: job.id, ref: job.ref, name: field('business_name'), owner: field('owner_name'), address: field('business_address'),
-    type: job.applicationType === 'renewal' ? 'Renewal' : 'New permit', at: Date.parse(job.createdAt), submitted: format(job.createdAt).date,
+    type: job.applicationType === 'renewal' ? 'Renewal' : 'New permit', at: Date.parse(job.createdAt), submitted: format(job.submission?.submittedAt || job.createdAt).date,
+    submittedAt: job.submission?.submittedAt || null, submissionChannel: job.submission?.channel || (job.sourceAssessment ? 'remote' : null), submissionReceipt: job.submission?.receipt || job.remoteReceipt || null,
     submittedBy: job.applicant.email, agoMin: Math.max(0, (Date.now() - Date.parse(job.createdAt)) / 60000),
     docs: job.documents.map(d => d.file), findings, decision: job.decision,
     status: job.decision?.type === 'approved' ? 'Processed' : job.decision?.type === 'returned' ? 'Returned' : 'In review',

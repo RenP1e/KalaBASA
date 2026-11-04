@@ -39,6 +39,9 @@ test('preserved React screens render with server evidence, null values, and corr
   assert.equal(manualMarkup.includes('Source unavailable'), false);
   assert.equal(manualMarkup.includes('Open source page'), false);
   user = { ...applicant, access: 'consumer', role: 'applicant' }; await context.KB.store.login(user.email, 'synthetic');
+  const profileMarkup = renderToStaticMarkup(React.createElement(P.Profile));
+  assert.ok(profileMarkup.includes('Manage your applicant account')); assert.ok(profileMarkup.includes('Security &amp; password'));
+  assert.equal(profileMarkup.includes('LGU administration'), false);
   for (const page of ['MyReports', 'MyReport']) {
     const markup = renderToStaticMarkup(React.createElement(P[page], { appRef: job.ref }));
     assert.ok(markup.includes('Local assessment') || markup.includes('Manual review required')); assert.equal(markup.includes('Submission complete'), false);

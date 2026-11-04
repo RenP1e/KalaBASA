@@ -16,8 +16,8 @@
 
   const parts = (hash) => (hash || '').replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
 
-  // Consumers can reach exactly these pages (scan/upload + their own findings reports). Nothing else.
-  const CONSUMER_PAGES = ['scan', 'my-reports'];
+  // Applicants can upload, view their own reports, and manage their own account.
+  const CONSUMER_PAGES = ['scan', 'my-reports', 'profile'];
   const allowed = (hash, access) => (access === 'consumer' ? CONSUMER_PAGES.includes(parts(hash)[0]) : parts(hash)[0] !== 'my-reports');
   const homeFor = (access) => (access === 'consumer' ? '#/scan' : '#/home');
 

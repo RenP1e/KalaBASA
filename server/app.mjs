@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import QRCode from 'qrcode';
 import { activePolicy, savePolicy } from './policy.mjs';
 import { createUser, digest, login, session, changePassword } from './auth.mjs';
@@ -84,7 +85,7 @@ export function createApp(store, cfg, dependencies = {}) {
   app.get('/api/health', async (req, res) => {
     let model;
     try { model = await engine.extractor.available(); } catch { model = null; }
-    res.json({ local: true, model, modelConfigured: cfg.model, syncConfigured: !!(cfg.syncUrl && cfg.syncToken), policy: activePolicy(store, req.auth.user.lguId)?.version || null });
+    res.json({ local: true, model, modelConfigured: cfg.model, submissionMode: cfg.submissionMode, syncConfigured: !!(cfg.syncUrl && cfg.syncToken), policy: activePolicy(store, req.auth.user.lguId)?.version || null });
   });
   app.get('/api/requirements', (req, res) => res.json(activePolicy(store, req.auth.user.lguId)));
   app.get('/api/admin/requirements/history', admin, (req, res) => res.json(store.list('policies').filter(p => p.lguId === req.auth.user.lguId)));
@@ -95,7 +96,11 @@ export function createApp(store, cfg, dependencies = {}) {
   });
   app.post('/api/admin/users', admin, (req, res) => {
     if (req.body.lguId !== req.auth.user.lguId) throw fail(403, 'Account belongs to another LGU.');
-    try { res.status(201).json(createUser(store, req.body)); } catch (e) { throw fail(400, e.message); }
+    try { res.status(201).json(createUser(store, req.body, req.auth.user.id)); } catch (e) { throw fail(400, e.message); }
+  });
+  app.get('/api/admin/users', admin, (req, res) => {
+    store.audit(req.auth.user.id, 'account_list_accessed', req.auth.user.lguId);
+    res.json(store.list('users').filter(u => u.lguId === req.auth.user.lguId).map(u => ({ id: u.id, email: u.email, name: u.name, role: u.role, lguId: u.lguId })));
   });
   app.get('/api/admin/audit', admin, (req, res) => {
     const lguId = req.auth.user.lguId;
@@ -132,7 +137,7 @@ export function createApp(store, cfg, dependencies = {}) {
   });
   app.get('/api/assessments', (req, res) => {
     store.audit(req.auth.user.id, 'assessment_list_accessed', req.auth.user.lguId);
-    res.json(store.list('jobs').filter(j => accessible(j, req.auth.user)).map(applicationView).sort((a, b) => b.at - a.at));
+    res.json(store.list('jobs').filter(j => accessible(j, req.auth.user)).map(applicationView).sort((a, b) => (Date.parse(b.submittedAt) || b.at) - (Date.parse(a.submittedAt) || a.at)));
   });
   app.get('/api/assessments/:id', (req, res) => {
     const job = getJob(req); store.audit(req.auth.user.id, 'assessment_accessed', job.id);
@@ -194,9 +199,24 @@ export function createApp(store, cfg, dependencies = {}) {
   });
   app.post('/api/assessments/:id/submit', (req, res) => {
     const job = getJob(req);
-    if (job.ownerId !== req.auth.user.id || job.transmissionState === 'received_by_lgu') throw fail(403, 'Only the local application owner can submit it.');
+    if (job.ownerId !== req.auth.user.id) throw fail(403, 'Only the local application owner can submit it.');
+    if (job.transmissionState === 'received_by_lgu' && job.submission?.channel === 'local') {
+      return res.json({ transmissionState: job.transmissionState, channel: 'local', receipt: job.submission.receipt, submittedAt: job.submission.submittedAt });
+    }
+    if (job.transmissionState === 'received_by_lgu') throw fail(409, 'This application was already received by an LGU.');
+    if (!terminalStates.includes(job.state) || !job.completedAt || job.decision) throw fail(409, 'Complete the local assessment before submitting it for review.');
+    if (cfg.submissionMode === 'local') {
+      if (job.transmissionState !== 'local_only') throw fail(409, 'This application is already queued for external delivery and cannot also be submitted locally.');
+      const submission = { channel: 'local', submittedAt: new Date().toISOString(), receipt: `LGU-${randomUUID()}`, submittedBy: req.auth.user.id };
+      store.transaction(() => {
+        job.submission = submission; job.transmissionState = 'received_by_lgu'; job.revision++;
+        store.put('jobs', job.id, job);
+        store.audit(req.auth.user.id, 'application_submitted_locally', job.id, { lguId: job.lguId, receipt: submission.receipt, documents: job.documents.length });
+      });
+      return res.status(201).json({ transmissionState: job.transmissionState, ...submission });
+    }
     try { sync.queue(job, req.auth.user.id); } catch (e) { throw fail(409, e.message); }
-    res.status(202).json({ transmissionState: store.get('jobs', job.id).transmissionState, syncConfigured: !!cfg.syncUrl });
+    res.status(202).json({ transmissionState: store.get('jobs', job.id).transmissionState, channel: 'remote', syncConfigured: !!(cfg.syncUrl && cfg.syncToken) });
   });
   app.post('/api/sync/run', async (req, res) => { await sync.flush(); res.json({ ok: true }); });
   app.get('/api/assessments/:id/qr', async (req, res) => {

@@ -5,11 +5,13 @@ export function config(env = process.env) {
     throw new Error('Ollama must use a numeric loopback HTTP address, without credentials or a path.');
   }
   const model = env.KB_MODEL || 'qwen2.5:3b';
+  const submissionMode = env.KB_SUBMISSION_MODE || (env.KB_SYNC_URL ? 'remote' : 'local');
+  if (!['local', 'remote'].includes(submissionMode)) throw new Error('KB_SUBMISSION_MODE must be local or remote.');
   if (!/^[a-zA-Z0-9_.:/-]+$/.test(model) || /cloud/i.test(model)) throw new Error('Only installed local model names are allowed.');
   const key = Buffer.from(env.KB_MASTER_KEY || '', 'base64');
   if (key.length !== 32) throw new Error('KB_MASTER_KEY must be 32 bytes in base64. Run npm run setup.');
   return {
-    port: Number(env.PORT || 3210), dataDir: path.resolve(env.KB_DATA_DIR || './var'), key,
+    port: Number(env.PORT || 3210), dataDir: path.resolve(env.KB_DATA_DIR || './var'), key, submissionMode,
     ollama: ollama.origin, model, modelTimeout: Number(env.KB_MODEL_TIMEOUT_MS || 120000),
     tesseract: env.KB_TESSERACT || 'tesseract', ocrLang: env.KB_OCR_LANG || 'eng',
     secureCookie: env.KB_SECURE_COOKIE === 'true', syncUrl: env.KB_SYNC_URL || '', syncToken: env.KB_SYNC_TOKEN || '',

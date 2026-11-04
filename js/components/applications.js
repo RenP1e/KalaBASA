@@ -123,7 +123,8 @@
           h(KB.AssessmentStatus, { app: a }),
           KB.Card('p-6', t('h2', 'mb-2 text-xl font-bold text-navy', 'Application details'),
             row('Reference no.', a.ref), row('Business', a.name), row('Permit type', a.type), row('Applicant', a.owner), row('Business address', a.address), row('Submitted', a.submitted),
-            a.submittedBy && row('Documents', a.complete ? `Complete${a.completedStamp ? ` · ${a.completedStamp.date}` : ''} · Receipt ${a.receiptNo}` : a.held ? 'Complete, but inconsistent · No receipt yet (awaiting corrected resubmission)' : 'Incomplete')),
+            a.submittedBy && row('Documents', `${a.docs.length} uploaded`),
+            a.submissionReceipt && row('Submission receipt', a.submissionReceipt)),
           KB.Card('p-6', t('h2', 'mb-4 text-xl font-bold text-navy', `Findings (${a.findings.length})`),
             a.findings.length
               ? t('div', 'space-y-3', ...a.findings.map((f, i) => h('a', { key: i, href: `#/applications/${ref}/finding/${i + 1}`, className: 'flex items-center gap-4 rounded-xl border border-line p-4 transition hover:border-navy' },

@@ -53,6 +53,7 @@
 
   KB.pages.Profile = function Profile() {
     const s = KB.useStore();
+    const consumer = KB.access() === 'consumer';
     const [modal, setModal] = useState(null);
     const week = Q.report(s, 'week');
     const unread = Q.unread(s);
@@ -63,7 +64,7 @@
 
     return h(KB.Shell, { active: 'profile' },
       h(KB.Hero, {
-        crumbs: [{ label: 'Reviewer workspace' }, { label: 'Profile' }], title: 'Profile', sub: 'Manage your reviewer account',
+        crumbs: [{ label: consumer ? 'Applicant portal' : 'Reviewer workspace' }, { label: 'Profile' }], title: 'Profile', sub: consumer ? 'Manage your applicant account' : 'Manage your reviewer account',
         actions: [h(KB.Btn, { key: 1, onClick: () => { const el = document.getElementById('personal-info'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 'Personal information'),
           h(KB.Btn, { key: 2, variant: 'ghost', onClick: () => setModal('help') }, 'Help & support')],
       }),
@@ -74,7 +75,7 @@
               t('div', 'relative', t('span', 'grid h-[76px] w-[76px] place-items-center rounded-full bg-brand text-2xl font-bold ring-4 ring-white', KB.USER.initials), t('span', 'absolute bottom-1 right-1 h-3 w-3 rounded-full bg-ok ring-2 ring-white')),
               t('div', null, t('p', 'text-xl font-bold', KB.USER.name), t('p', 'text-xs text-white/75', `${KB.USER.role} · ${KB.APP.office}`))),
             t('span', 'mt-5 inline-block rounded-full bg-white/15 px-3 py-1 text-xs', `LGU ${KB.USER.lguId}`),
-            t('div', 'mt-5 border-t border-white/20 pt-3', stat('Reviewed · 7 days', week.reviewed), stat('Findings · 7 days', week.total), stat('Avg. time · 7 days', week.time))),
+            !consumer && t('div', 'mt-5 border-t border-white/20 pt-3', stat('Reviewed · 7 days', week.reviewed), stat('Findings · 7 days', week.total), stat('Avg. time · 7 days', week.time))),
           t('div', 'rounded-2xl bg-navy-50 p-6', t('div', 'mb-3 text-lg text-navy', Icon('wand-magic-sparkles')), t('p', 'font-bold text-navy', 'Human-led decisions'), t('p', 'mt-2 text-navy', KB.DISCLAIMER)),
           h('button', { onClick: () => { KB.store.logout(); location.hash = '#/login'; }, className: 'flex h-12 w-full items-center justify-center gap-2 rounded-full border border-danger-line bg-[#FFF3F3] font-semibold text-danger hover:bg-danger-soft' }, Icon('arrow-right-from-bracket'), 'Log out'),
           t('p', 'text-center text-xs text-slate2', `KalaBASA v${KB.APP.version}`)),

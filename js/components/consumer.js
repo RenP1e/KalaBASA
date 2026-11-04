@@ -36,6 +36,7 @@
     if (a.held) return { kind: 'Needs review', label: 'Resubmission needed' };
     if (a.decision && a.decision.type === 'approved') return { kind: 'Processed', label: 'Approved' };
     if (a.decision) return { kind: 'Returned', label: 'Returned for correction' };
+    if (a.transmissionState === 'received_by_lgu') return { kind: 'In review', label: 'Submitted to LGU' };
     return a.status === 'Pending' ? { kind: 'Pending', label: 'Submitted' } : { kind: 'In review', label: 'Under review' };
   };
   const findingStatus = (f) => (f.status === 'confirmed' ? { kind: 'Needs review', label: 'Needs correction' }
